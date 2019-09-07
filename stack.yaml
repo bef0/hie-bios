@@ -1,0 +1,6 @@
+resolver: nightly-2019-05-20
+packages:
+- .
+nix:
+  packages: [zlib]
+allow-newer: true

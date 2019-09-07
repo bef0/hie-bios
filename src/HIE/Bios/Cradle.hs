@@ -193,13 +193,18 @@ stackAction work_dir fp = do
   setFileMode wrapper_fp accessModes
   check <- readFile wrapper_fp
   traceM check
-  (ex1, args, stde) <-
-      withCurrentDirectory work_dir (readProcessWithExitCode "stack" ["repl", "--silent", "--no-load", "--with-ghc", wrapper_fp, fp ] [])
+  (ex1, args, stde) <- do
+      let command = unwords ["stack", "repl", "$STACK_IN_NIX_EXTRA_ARGS", "--silent", "--no-load", "--with-ghc", wrapper_fp, fp]
+          process = shell command
+      -- putStrLn $ "COMMAND: " ++ command
+      -- withCurrentDirectory work_dir (readProcessWithExitCode "stack" ["repl", "--silent", "--no-load", "--with-ghc", wrapper_fp, fp ] [])
+      readCreateProcessWithExitCode process []
   (ex2, pkg_args, stdr) <-
       withCurrentDirectory work_dir (readProcessWithExitCode "stack" ["path", "--ghc-package-path"] [])
   let split_pkgs = splitSearchPath (init pkg_args)
       pkg_ghc_args = concatMap (\p -> ["-package-db", p] ) split_pkgs
-  case processCabalWrapperArgs args of
+      args1 = unlines $ dropWhile ("is up-to-date" `isSuffixOf`) $ lines args
+  case processCabalWrapperArgs args1 of
       Nothing -> error (show (ex1, stde, args))
       Just ghc_args -> return (combineExitCodes [ex1, ex2], stde ++ stdr, ghc_args ++ pkg_ghc_args)
 
